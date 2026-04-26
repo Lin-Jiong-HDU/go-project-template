@@ -20,72 +20,56 @@ Flat structure under project root:
 
 ### Web Project (Clean Architecture)
 
-DDD / Clean Architecture inside `internal/`:
+Architecture layers, from outermost to innermost:
+
+- **route** — composition root; registers HTTP routes and wires all layers together
+- **controller** — HTTP delivery; parses requests, calls usecase interfaces, writes responses
+- **usecase** — business logic; orchestrates domain operations through repository interfaces
+- **repository** — data access; implements persistence using external driver packages
+- **domain** — entities + all interfaces; imports nothing from this project
+
+Folder structure (layers may sit at project root or under `internal/`; group HTTP-related code under `api/` when preferred):
 
 ```
 ├── cmd/
 │   └── main.go              # Entry point
-├── internal/
-│   ├── domain/              # Domain layer (innermost)
-│   │   ├── entity.go        #   Entity definitions
-│   │   ├── repository.go    #   Repository interfaces (interfaces only)
-│   │   └── usecase.go       #   Usecase interfaces (interfaces only)
-│   ├── repository/          # Data access (implements domain interfaces)
-│   │   └── xxx_repository.go
-│   ├── usecase/             # Business logic (implements domain interfaces)
-│   │   └── xxx_usecase.go
-│   ├── controller/          # Delivery layer / HTTP handlers
+├── domain/                  # Entities, repository interfaces, usecase interfaces
+│   ├── entity.go
+│   ├── repository.go
+│   └── usecase.go
+├── usecase/                 # Business logic (implements domain.XxxUsecase)
+│   └── xxx_usecase.go
+├── repository/              # Data access (implements domain.XxxRepository)
+│   └── xxx_repository.go
+├── api/
+│   ├── controller/          # HTTP handlers (calls domain usecase interfaces)
 │   │   └── xxx_controller.go
-│   ├── route/               # Route registration (composition root)
-│   │   └── route.go
-│   ├── middleware/           # HTTP middleware
-│   ├── bootstrap/           # App initialization (config, DB, etc.)
-│   ├── infra/               # Infrastructure abstraction (DB driver wrappers)
-│   └── mocks/               # Generated mock files
+│   ├── middleware/          # HTTP middleware
+│   └── route/               # Route registration and dependency wiring
+│       └── route.go
+├── bootstrap/               # App initialization (config, DB setup)
+├── internal/                # Shared utilities (tokenutil, etc.)
+├── mocks/                   # Generated mocks (mockery)
 ├── go.mod
 └── Makefile
 ```
 
-#### Dependency Direction (Hard Rule)
+#### Dependency Direction
 
-Clean Architecture Dependency Rule: source code dependencies must point **inward only**.
-Inner layers define interfaces; outer layers provide implementations.
+Dependencies flow inward: `route` → `controller` → `usecase` → `repository` → `domain`.
 
-```
-╔══════════════════════════════════════════════════════╗
-║  Frameworks & Drivers                                 ║
-║  • infra  (DB drivers, external clients)              ║
-║  ┌─────────────────────────────────────────────────┐  ║
-║  │  Interface Adapters                              │  ║
-║  │  • controller  (HTTP delivery)                   │  ║
-║  │  • repository  (DB gateway, imports domain+infra)│  ║
-║  │  ┌───────────────────────────────────────────┐  │  ║
-║  │  │  Use Cases                                │  │  ║
-║  │  │  • usecase  (imports domain only)         │  │  ║
-║  │  │  ┌─────────────────────────────────────┐  │  │  ║
-║  │  │  │  Entities (domain)                  │  │  │  ║
-║  │  │  │  entities, repository interfaces,   │  │  │  ║
-║  │  │  │  usecase interfaces — zero imports  │  │  │  ║
-║  │  │  └─────────────────────────────────────┘  │  │  ║
-║  │  └───────────────────────────────────────────┘  │  ║
-║  └─────────────────────────────────────────────────┘  ║
-╚══════════════════════════════════════════════════════╝
-route — composition root; outside the rings; imports all layers to wire them
-```
-
-- `domain` — innermost; entity types + **all interfaces** (Repository, Usecase); zero project imports
-- `usecase` — implements `domain.XxxUsecase`; imports `domain` only
-- `repository` — implements `domain.XxxRepository`; imports `domain` + `infra`
-- `controller` — HTTP delivery; imports `domain` (usecase interfaces + entities); **never imports `usecase` package directly**
-- `infra` — pure drivers (DB connections, external clients); no domain knowledge; no project imports
-- `route` — composition root; instantiates all concrete types and wires them through interfaces
+- `domain` — defines entity types + all interfaces (XxxRepository, XxxUsecase); imports nothing from this project
+- `usecase` — implements `domain.XxxUsecase`; imports `domain` only; applies `context.WithTimeout`
+- `repository` — implements `domain.XxxRepository`; imports `domain` + external driver packages
+- `controller` — imports `domain` interfaces only; never imports `usecase` package directly
+- `route` — imports all layers; instantiates concrete types and wires them through `domain` interfaces
 
 #### Key Conventions
 
 1. **Interfaces in domain, implementations in outer layers** — dependency inversion
 2. **Unexported concrete types, exported constructors** — `type xxxUsecase struct` (unexported), `func NewXxxUsecase() domain.XxxUsecase` (exported)
 3. **Manual dependency injection** — no DI framework, assembly in route layer
-4. **Context timeout from usecases** — `context.WithTimeout` set uniformly in usecase layer
+4. **Context timeout in usecases** — `context.WithTimeout` set in usecase layer
 5. **Mocks generated by tooling** — use mockery, stored in `mocks/`
 6. **Black-box testing** — `package xxx_test`, test only public API
 

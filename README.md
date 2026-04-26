@@ -47,22 +47,30 @@ Keep the flat structure as-is:
 Follow the structure described in `CLAUDE.md`:
 
 ```
-├── cmd/main.go
-├── internal/
-│   ├── domain/          # Entities & interfaces (innermost layer)
-│   ├── repository/      # Data access implementations
-│   ├── usecase/         # Business logic
-│   ├── controller/      # HTTP handlers
-│   ├── route/           # Composition root (wiring)
-│   ├── middleware/       # HTTP middleware
-│   ├── bootstrap/       # App initialization
-│   ├── infra/           # Infrastructure abstraction
-│   └── mocks/           # Generated mocks
+├── cmd/
+│   └── main.go              # Entry point
+├── domain/                  # Entities, repository interfaces, usecase interfaces
+│   ├── entity.go
+│   ├── repository.go
+│   └── usecase.go
+├── usecase/                 # Business logic (implements domain.XxxUsecase)
+│   └── xxx_usecase.go
+├── repository/              # Data access (implements domain.XxxRepository)
+│   └── xxx_repository.go
+├── api/
+│   ├── controller/          # HTTP handlers (calls domain usecase interfaces)
+│   │   └── xxx_controller.go
+│   ├── middleware/          # HTTP middleware
+│   └── route/               # Route registration and dependency wiring
+│       └── route.go
+├── bootstrap/               # App initialization (config, DB setup)
+├── internal/                # Shared utilities (tokenutil, etc.)
+├── mocks/                   # Generated mocks (mockery)
 ├── go.mod
 └── Makefile
 ```
 
-Dependency direction is strictly enforced: `controller → usecase → repository → infra`, with `route` as the composition root.
+Dependency direction is strictly enforced: `route → controller → usecase → repository → domain`, with `route` as the composition root.
 
 ## AI Instruction Files
 

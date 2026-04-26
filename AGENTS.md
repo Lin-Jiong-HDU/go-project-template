@@ -48,17 +48,37 @@ DDD / Clean Architecture inside `internal/`:
 
 #### Dependency Direction (Hard Rule)
 
-```
-controller → usecase → repository → infra
+Clean Architecture Dependency Rule: source code dependencies must point **inward only**.
+Inner layers define interfaces; outer layers provide implementations.
 
-    route (composition root: creates and wires all dependencies)
+```
+╔══════════════════════════════════════════════════════╗
+║  Frameworks & Drivers                                 ║
+║  • infra  (DB drivers, external clients)              ║
+║  ┌─────────────────────────────────────────────────┐  ║
+║  │  Interface Adapters                              │  ║
+║  │  • controller  (HTTP delivery)                   │  ║
+║  │  • repository  (DB gateway, imports domain+infra)│  ║
+║  │  ┌───────────────────────────────────────────┐  │  ║
+║  │  │  Use Cases                                │  │  ║
+║  │  │  • usecase  (imports domain only)         │  │  ║
+║  │  │  ┌─────────────────────────────────────┐  │  │  ║
+║  │  │  │  Entities (domain)                  │  │  │  ║
+║  │  │  │  entities, repository interfaces,   │  │  │  ║
+║  │  │  │  usecase interfaces — zero imports  │  │  │  ║
+║  │  │  └─────────────────────────────────────┘  │  │  ║
+║  │  └───────────────────────────────────────────┘  │  ║
+║  └─────────────────────────────────────────────────┘  ║
+╚══════════════════════════════════════════════════════╝
+route — composition root; outside the rings; imports all layers to wire them
 ```
 
-- `domain` defines only interfaces and types — never imports other project packages
-- `usecase` depends on `domain` interfaces — never directly on `repository` implementations
-- `repository` depends on `domain` interfaces and `infra`
-- `controller` depends on `domain` interfaces — calls business logic through usecase interfaces
-- `route` is the composition root — creates the full dependency chain
+- `domain` — innermost; entity types + **all interfaces** (Repository, Usecase); zero project imports
+- `usecase` — implements `domain.XxxUsecase`; imports `domain` only
+- `repository` — implements `domain.XxxRepository`; imports `domain` + `infra`
+- `controller` — HTTP delivery; imports `domain` (usecase interfaces + entities); **never imports `usecase` package directly**
+- `infra` — pure drivers (DB connections, external clients); no domain knowledge; no project imports
+- `route` — composition root; instantiates all concrete types and wires them through interfaces
 
 #### Key Conventions
 
@@ -161,6 +181,7 @@ type(scope): subject
 
 - **NEVER** import other project packages in `domain`
 - **NEVER** let `usecase` depend on `repository` concrete types — use `domain` interfaces
+- **NEVER** let `controller` import the `usecase` package directly — call use cases only through `domain` interfaces
 - **NEVER** break dependency direction (outer → inner only)
 - **NEVER** put business logic implementations in `domain`
 
@@ -173,7 +194,7 @@ type(scope): subject
 
 ### Dependencies
 
-- **NEVER** introduce third-party dependencies without explaining purpose and getting approval
+- **NEVER** introduce third-party dependencies without documenting the purpose and checking for known CVEs in the commit message
 - **NEVER** replace existing chosen dependencies
 - **NEVER** change the Go version
 
@@ -195,10 +216,13 @@ type(scope): subject
 
 ### Behavior
 
-- Understand context before modifying — do not blindly replace
-- Verify `go vet` and `go build` pass after each change
-- Follow existing project style — do not mix styles
-- When uncertain, ask — do not guess intent
+- Read existing code in the affected area before modifying — match established patterns
+- After every change: run `go vet ./...` and `go build ./...`; fix all reported errors before proceeding
+- After completing a full change set: run `go test ./...` to confirm no regressions
+- Follow existing project style — do not introduce new patterns or mix styles
+- When requirements are ambiguous, apply the most conservative interpretation; document assumptions in the commit message
+- Make the smallest change that satisfies the requirement — do not refactor unrelated code
+- When a build or test fails, diagnose the root cause from the error output, fix it, and re-verify; never skip or comment out failing tests
 
 ## Recommended Libraries (not pre-installed)
 

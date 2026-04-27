@@ -72,3 +72,9 @@ Dependency direction: `route → controller → usecase → repository → domai
 - No hardcoded secrets or passwords
 - No direct push to `main`
 - Third-party dependencies require CVE check + purpose documented in commit message
+
+## Testing Strategy
+
+- **TDD (Red → Green → Refactor)** for usecase business logic and domain validation rules — write the failing test first.
+- **Coverage-only** (test written alongside or after implementation) for simple helpers, pure transformations, and boilerplate constructors.
+- Decision rule: if the logic has conditionals, loops, or multiple error paths → TDD. If a table of ≤3 rows describes it fully → coverage-only is enough.

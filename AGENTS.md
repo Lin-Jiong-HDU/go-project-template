@@ -199,6 +199,30 @@ Dependencies flow inward: `route` → `controller` → `usecase` → `repository
 - Controller: at least happy path + major error paths
 - Core business logic must have tests
 
+### TDD Strategy
+
+Apply Test-Driven Development selectively based on code complexity:
+
+**Use TDD (Red → Green → Refactor) for:**
+
+- Business logic in the `usecase` layer (non-trivial orchestration, branching, error paths)
+- Domain validation rules embedded in entity constructors or value objects
+- Any function whose correct behaviour is hard to verify by inspection alone
+
+TDD cycle for these cases:
+1. Write a failing test that captures the requirement (`go test` must fail — Red)
+2. Write the minimal implementation to make it pass (Green)
+3. Refactor without changing observable behaviour; keep tests green (Refactor)
+
+**Coverage-only (write test alongside or after implementation) for:**
+
+- Simple helper / utility functions with a single, obvious code path
+- Pure data transformations with no branching
+- Boilerplate constructors (`NewXxx`) that only set fields
+- Infrastructure wiring in `route` (tested by integration / e2e)
+
+**Decision rule:** if you can state the expected behaviour in a table of ≤3 rows, coverage-only is sufficient. If the logic involves conditionals, loops, or error-path branching, apply TDD.
+
 ## Git Workflow
 
 ### Branches

@@ -1,39 +1,96 @@
 # Go Project Template
 
-A Go 1.24+ project template optimized for **AI-assisted development**. Ships with ready-to-use instruction files for Claude Code, GitHub Copilot, and Cursor — so AI tools understand your project conventions from day one.
-
-## Why This Template?
-
-When AI coding assistants don't understand your project's rules, they generate inconsistent code, break architectural boundaries, and introduce unwanted dependencies. This template solves that by embedding your conventions directly into AI instruction files:
-
-- **Coding standards** — naming, error handling, context usage, logging
-- **Architecture rules** — Clean Architecture layering for web projects, flat structure for CLI
-- **Testing strategy** — table-driven tests, mock generation, coverage expectations
-- **Hard boundaries** — explicit "NEVER" rules that prevent common AI mistakes
-- **Git workflow** — Conventional Commits, branch naming, PR format
+A Go 1.24+ project template with built-in AI coding assistant instructions, CI/CD pipelines, and automated issue processing. Start a new project with conventions, tooling, and AI support already wired up.
 
 ## Features
 
-- Zero third-party dependencies — pure Go standard library skeleton
-- AI instruction files for **3 major tools** (Claude Code, Copilot, Cursor)
-- Two project modes: **CLI/Library** (flat) and **Web** (Clean Architecture / DDD)
-- Go 1.24+ with modern idioms (generics over `interface{}`, `log/slog`, etc.)
-- Makefile with common commands out of the box
+- **Zero dependencies** — pure Go standard library skeleton
+- **AI-ready** — instruction files for Claude Code, GitHub Copilot, and Cursor
+- **Two project modes** — CLI/Library (flat) or Web (Clean Architecture)
+- **CI/CD pipeline** — automated vet, build, test, and lint on every push
+- **Issue-driven automation** — create an issue to trigger a remote AI agent
+- **Makefile** — common commands out of the box
+
+## Issue-Driven Automation
+
+This template's core feature: **create a GitHub issue, and a remote AI agent implements it for you.**
+
+### How it works
+
+```
+GitHub Issue  ──[claude bot]──►  GitHub Actions  ──webhook──►  Your Server (Claude Code)
+                                                                        │
+                                                                        ▼
+                                                                 Pull → Branch → Implement → Test → PR
+```
+
+1. Create an issue with title ending in `[claude bot]`, e.g.: `Add user login API [claude bot]`
+2. GitHub Actions sends the issue content to your server webhook
+3. Your server-side Claude Code receives it and:
+   - Pulls the latest code from `main`
+   - Creates a feature branch (`feat/issue-{number}-{desc}`)
+   - Implements the task following the five-phase workflow
+   - Runs all pipeline gates (vet, build, test, lint)
+   - Pushes the branch and opens a pull request
+   - Comments on the issue with the PR link
+
+### Setup
+
+1. **Deploy Claude Code on your server** with a webhook endpoint that accepts POST requests
+2. **Add repository secrets** in GitHub (Settings → Secrets and variables → Actions):
+   - `WEBHOOK_URL` — your server endpoint (e.g. `https://your-server.com/webhook/issue`)
+   - `WEBHOOK_SECRET` — shared secret for request verification
+   - `ANTHROPIC_API_KEY` — your Anthropic API key
+3. **Create an issue** with `[claude bot]` at the end of the title — that's it
+
+### Webhook payload
+
+Your server receives a JSON POST like this:
+
+```json
+{
+  "action": "opened",
+  "issue_number": 42,
+  "title": "Add user login API [claude bot]",
+  "body": "Use JWT for authentication...",
+  "author": "username",
+  "labels": ["enhancement"],
+  "url": "https://github.com/owner/repo/issues/42",
+  "repository": "owner/repo",
+  "created_at": "2026-04-27T12:00:00Z"
+}
+```
+
+Verify the `X-Webhook-Secret` header matches your configured secret before processing.
+
+### Claude Code Action (manual trigger)
+
+`.github/workflows/claude.yml` provides an on-demand Claude Code run. Go to **Actions → Claude Code → Run workflow** and optionally pass an issue number or custom prompt.
 
 ## Quick Start
 
-1. Click **"Use this template"** on GitHub to create a new repo
-2. Update the module path in `go.mod`:
-   ```
-   module github.com/YOUR_USERNAME/YOUR_REPO
-   ```
-3. Choose your project type and start coding
+### 1. Create your project
 
-## Project Types
+Click **"Use this template"** on GitHub, or:
 
-### CLI / Library
+```bash
+git clone https://github.com/Lin-Jiong-HDU/go-project-template.git my-project
+cd my-project
+rm -rf .git
+git init
+```
 
-Keep the flat structure as-is:
+### 2. Update module path
+
+Edit `go.mod` and replace the module path:
+
+```
+module github.com/YOUR_USERNAME/YOUR_PROJECT
+```
+
+### 3. Choose project type
+
+**CLI / Library** — keep the flat structure as-is:
 
 ```
 ├── main.go
@@ -42,95 +99,72 @@ Keep the flat structure as-is:
 └── Makefile
 ```
 
-### Web (Clean Architecture)
-
-Follow the structure described in `CLAUDE.md`:
+**Web (Clean Architecture)** — restructure into layers:
 
 ```
-├── cmd/
-│   └── main.go              # Entry point
-├── domain/                  # Entities, repository interfaces, usecase interfaces
-│   ├── entity.go
-│   ├── repository.go
-│   └── usecase.go
-├── usecase/                 # Business logic (implements domain.XxxUsecase)
-│   └── xxx_usecase.go
-├── repository/              # Data access (implements domain.XxxRepository)
-│   └── xxx_repository.go
-├── api/
-│   ├── controller/          # HTTP handlers (calls domain usecase interfaces)
-│   │   └── xxx_controller.go
-│   ├── middleware/          # HTTP middleware
-│   └── route/               # Route registration and dependency wiring
-│       └── route.go
-├── bootstrap/               # App initialization (config, DB setup)
-├── internal/                # Shared utilities (tokenutil, etc.)
-├── mocks/                   # Generated mocks (mockery)
+├── cmd/main.go               # Entry point
+├── domain/                   # Entities + interfaces (imports nothing)
+├── usecase/                  # Business logic
+├── repository/               # Data access
+├── api/controller/           # HTTP handlers
+├── api/middleware/            # HTTP middleware
+├── api/route/                # Route registration + DI wiring
+├── bootstrap/                # App initialization
+├── internal/                 # Shared utilities
+├── mocks/                    # Generated mocks
 ├── go.mod
 └── Makefile
 ```
 
-Dependency direction is strictly enforced: `route → controller → usecase → repository → domain`, with `route` as the composition root.
+Dependency direction is strictly enforced: `route → controller → usecase → repository → domain`.
 
-## AI Instruction Files
-
-| File | Tool | Status |
-|------|------|--------|
-| `CLAUDE.md` | [Claude Code](https://claude.ai/code) | Ready |
-| `AGENTS.md` | [GitHub Copilot](https://github.com/features/copilot) | Ready |
-| `.cursorrules` | [Cursor](https://cursor.sh) | Ready |
-| `.github/copilot-instructions.md` | GitHub Copilot (cloud agent) | Ready |
-
-`CLAUDE.md` is the source of truth; `AGENTS.md` and `.cursorrules` contain the same full rules. `.github/copilot-instructions.md` is a condensed operational summary derived from them.
-
-### What's in the AI Instructions?
-
-- **AI Workflow Protocol** — five mandatory phases: Understand → Plan → Implement → Verify → Commit
-- **Pipeline Gates** — four local gates (vet, build, test, lint) every AI change must clear before a PR
-- **Debug Protocol** — structured self-correction loop; rules against suppressing errors or tests
-- **Project type detection** — AI reads your structure and adapts its behavior
-- **Go coding standards** — naming, error handling, context, concurrency, logging
-- **Architecture conventions** — dependency direction, interface segregation, DI patterns
-- **Testing strategy** — table-driven tests, mockery mocks, black-box testing
-- **Git workflow** — Conventional Commits, branch naming, PR format
-- **Hard boundaries** — 20+ explicit "NEVER" rules preventing AI from breaking your project
-- **Recommended libraries** — curated list for when you need third-party packages
-
-## CI/CD Pipeline
-
-The `.github/workflows/ci.yml` workflow runs on every push and pull request to `main`:
-
-| Stage | Command | Failure action |
-|-------|---------|----------------|
-| Tidy check | `go mod tidy && git diff --exit-code go.sum` | Fix go.sum drift |
-| Vet | `go vet ./...` | Fix reported issues |
-| Build | `go build ./...` | Fix compile errors |
-| Test | `go test -race ./...` | Fix failing tests |
-| Lint | `golangci-lint run` | Fix lint violations |
-
-**AI agents must replicate these gates locally** (see Pipeline Gates in `AGENTS.md`) before opening a pull request. The CI pipeline acts as the final arbiter.
-
-### Copilot Cloud Agent Setup
-
-`.github/copilot-setup-steps.yml` pre-installs `mockery` and `golangci-lint` in Copilot's ephemeral environment so it can run all local pipeline gates (vet, build, test, lint) without re-installing tools on every run.
-
-## Makefile Commands
+### 4. Start coding
 
 ```bash
-make build     # Build the project
+make build     # Build the binary
 make test      # Run tests with coverage
 make lint      # Run linter (requires golangci-lint)
 make run       # Run the application
-make tidy      # Tidy go modules
-make clean     # Clean build artifacts
 ```
+
+## AI Assistant Support
+
+The template ships with instruction files so AI tools understand your project conventions immediately:
+
+| File | Tool | Purpose |
+|------|------|---------|
+| `CLAUDE.md` | Claude Code | Full project rules (source of truth) |
+| `AGENTS.md` | GitHub Copilot | Same rules in Copilot format |
+| `.cursorrules` | Cursor | Same rules in Cursor format |
+| `.github/copilot-instructions.md` | Copilot Cloud Agent | Condensed operational summary |
+
+### What the AI rules cover
+
+- **Five-phase workflow** — Understand → Plan → Implement → Verify → Commit
+- **Pipeline gates** — vet, build, test, lint must all pass before committing
+- **Architecture rules** — dependency direction, interface segregation, DI patterns
+- **Go coding standards** — naming, error handling, context, concurrency, logging
+- **Testing strategy** — table-driven tests, mockery mocks, TDD for complex logic
+- **Hard boundaries** — explicit "NEVER" rules that prevent common AI mistakes
+
+## CI/CD Pipeline
+
+`.github/workflows/ci.yml` runs on every push and pull request to `main`:
+
+| Stage | Command |
+|-------|---------|
+| Tidy check | `go mod tidy` + diff check |
+| Vet | `go vet ./...` |
+| Build | `go build ./...` |
+| Test | `go test -race -coverprofile=coverage.out ./...` |
+| Lint | `golangci-lint run` |
 
 ## Customization
 
 - Edit `CLAUDE.md` to adjust rules, then sync to `AGENTS.md`, `.cursorrules`, and `.github/copilot-instructions.md`
 - Add your preferred libraries from the recommended list in the AI instructions
-- Extend the architecture sections to match your specific domain patterns
-- Adjust pipeline gates in `.github/workflows/ci.yml` to add project-specific checks (e.g., integration tests, security scanning)
+- Extend the architecture sections to match your domain patterns
+- Adjust CI pipeline gates to add project-specific checks
 
 ## License
 

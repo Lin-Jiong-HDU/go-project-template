@@ -1,4 +1,5 @@
 # Binaries
+/go-project-template
 *.exe
 *.exe~
 *.dll

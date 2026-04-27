@@ -243,6 +243,32 @@ type(scope): subject
 - scope: affected module (optional)
 - subject: imperative, max 72 chars, no period
 
+## Issue-Driven Automation
+
+When a server-side Claude Code instance receives an issue webhook request, follow this procedure:
+
+### Trigger Convention
+
+- Only issues with titles ending in `[claude bot]` are forwarded to the server webhook.
+- The issue title (excluding the `[claude bot]` suffix) is the task description.
+- The issue body contains detailed requirements, acceptance criteria, or additional context.
+
+### Execution Procedure
+
+1. **Pull latest code** — `git pull origin main` to ensure working on the latest state.
+2. **Create feature branch** — branch name follows `feat/issue-{number}-{short-description}` or `fix/issue-{number}-{short-description}` based on task type.
+3. **Execute the task** — follow the five-phase AI Workflow Protocol (Understand → Plan → Implement → Verify → Commit).
+4. **Run all pipeline gates** — `go vet` → `go build` → `go test` → `golangci-lint run` must all pass.
+5. **Push branch and create PR** — push to remote and open a pull request targeting `main`:
+   - PR title: copy from issue title, remove the `[claude bot]` suffix.
+   - PR body: reference the original issue with `Closes #{issue_number}`, summarize changes.
+6. **Comment on the issue** — leave a comment with the PR link confirming the task is done.
+
+### Failure Handling
+
+- If pipeline gates fail after three fix attempts, comment on the issue with the full error output and a clear explanation. Do not force-push or skip gates.
+- If the task description is ambiguous, apply the most conservative interpretation and document assumptions in the PR description.
+
 ## Hard Boundaries
 
 ### Architecture

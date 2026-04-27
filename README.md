@@ -81,7 +81,7 @@ Dependency direction is strictly enforced: `route → controller → usecase →
 | `.cursorrules` | [Cursor](https://cursor.sh) | Ready |
 | `.github/copilot-instructions.md` | GitHub Copilot (cloud agent) | Ready |
 
-`CLAUDE.md` is the source of truth; `AGENTS.md` and `.cursorrules` contain the same rules.
+`CLAUDE.md` is the source of truth; `AGENTS.md` and `.cursorrules` contain the same full rules. `.github/copilot-instructions.md` is a condensed operational summary derived from them.
 
 ### What's in the AI Instructions?
 
@@ -112,7 +112,7 @@ The `.github/workflows/ci.yml` workflow runs on every push and pull request to `
 
 ### Copilot Cloud Agent Setup
 
-`.github/copilot-setup-steps.yml` pre-installs `mockery` and `golangci-lint` in Copilot's ephemeral environment so it can run all four pipeline gates without installing tools on every run.
+`.github/copilot-setup-steps.yml` pre-installs `mockery` and `golangci-lint` in Copilot's ephemeral environment so it can run all local pipeline gates (vet, build, test, lint) without re-installing tools on every run.
 
 ## Makefile Commands
 

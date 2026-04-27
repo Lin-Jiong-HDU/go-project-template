@@ -79,11 +79,15 @@ Dependency direction is strictly enforced: `route → controller → usecase →
 | `CLAUDE.md` | [Claude Code](https://claude.ai/code) | Ready |
 | `AGENTS.md` | [GitHub Copilot](https://github.com/features/copilot) | Ready |
 | `.cursorrules` | [Cursor](https://cursor.sh) | Ready |
+| `.github/copilot-instructions.md` | GitHub Copilot (cloud agent) | Ready |
 
-All three files contain identical rules, maintained in sync. `CLAUDE.md` is the source of truth.
+`CLAUDE.md` is the source of truth; `AGENTS.md` and `.cursorrules` contain the same rules.
 
 ### What's in the AI Instructions?
 
+- **AI Workflow Protocol** — five mandatory phases: Understand → Plan → Implement → Verify → Commit
+- **Pipeline Gates** — four local gates (vet, build, test, lint) every AI change must clear before a PR
+- **Debug Protocol** — structured self-correction loop; rules against suppressing errors or tests
 - **Project type detection** — AI reads your structure and adapts its behavior
 - **Go coding standards** — naming, error handling, context, concurrency, logging
 - **Architecture conventions** — dependency direction, interface segregation, DI patterns
@@ -91,6 +95,24 @@ All three files contain identical rules, maintained in sync. `CLAUDE.md` is the 
 - **Git workflow** — Conventional Commits, branch naming, PR format
 - **Hard boundaries** — 20+ explicit "NEVER" rules preventing AI from breaking your project
 - **Recommended libraries** — curated list for when you need third-party packages
+
+## CI/CD Pipeline
+
+The `.github/workflows/ci.yml` workflow runs on every push and pull request to `main`:
+
+| Stage | Command | Failure action |
+|-------|---------|----------------|
+| Tidy check | `go mod tidy && git diff --exit-code go.sum` | Fix go.sum drift |
+| Vet | `go vet ./...` | Fix reported issues |
+| Build | `go build ./...` | Fix compile errors |
+| Test | `go test -race ./...` | Fix failing tests |
+| Lint | `golangci-lint run` | Fix lint violations |
+
+**AI agents must replicate these gates locally** (see Pipeline Gates in `AGENTS.md`) before opening a pull request. The CI pipeline acts as the final arbiter.
+
+### Copilot Cloud Agent Setup
+
+`.github/copilot-setup-steps.yml` pre-installs `mockery` and `golangci-lint` in Copilot's ephemeral environment so it can run all four pipeline gates without installing tools on every run.
 
 ## Makefile Commands
 
@@ -105,9 +127,10 @@ make clean     # Clean build artifacts
 
 ## Customization
 
-- Edit `CLAUDE.md` to adjust rules, then sync to `AGENTS.md` and `.cursorrules`
+- Edit `CLAUDE.md` to adjust rules, then sync to `AGENTS.md`, `.cursorrules`, and `.github/copilot-instructions.md`
 - Add your preferred libraries from the recommended list in the AI instructions
 - Extend the architecture sections to match your specific domain patterns
+- Adjust pipeline gates in `.github/workflows/ci.yml` to add project-specific checks (e.g., integration tests, security scanning)
 
 ## License
 

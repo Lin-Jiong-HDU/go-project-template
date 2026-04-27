@@ -2,6 +2,66 @@
 
 This is a Go 1.24+ project using standard library only. Third-party dependencies require explicit approval before introduction.
 
+## AI Workflow Protocol
+
+Every task — feature, bug fix, or refactor — must follow this five-phase cycle. **Do not skip or reorder phases.**
+
+### Phase 1: Understand
+
+- Read the task description in full before touching any file.
+- Use search tools (`grep`, `glob`, file reads) to identify every file that will need to change.
+- Read the current code in each affected area — never modify code you have not read.
+- Check whether tests already exist for the code you are about to change.
+
+### Phase 2: Plan
+
+- State, in plain text, which files will change and why.
+- Identify risks and side-effects (e.g., interface changes, DB migrations, breaking API).
+- For ambiguous requirements, choose the most conservative interpretation and record the assumption.
+- **Do not write any code yet.**
+
+### Phase 3: Implement
+
+- Make the smallest change that fully satisfies the requirement.
+- Follow project architecture and coding standards exactly (see sections below).
+- Implement everything completely — no `// TODO: implement` placeholders.
+- One logical unit of change per commit.
+
+### Phase 4: Verify — Pipeline Gates
+
+Run all gates in order. **Every gate must pass before proceeding to the next.** If a gate fails, fix the root cause and restart from Gate 1.
+
+| # | Gate | Command | Pass condition |
+|---|------|---------|----------------|
+| 1 | Vet | `go vet ./...` | Zero output |
+| 2 | Build | `go build ./...` | Zero output |
+| 3 | Test | `go test ./...` | All tests pass |
+| 4 | Lint | `golangci-lint run` | No new violations |
+
+### Phase 5: Commit
+
+- Use Conventional Commits (`type(scope): subject`).
+- Document any assumptions and CVE-check results in the commit message when introducing dependencies.
+- Never push directly to `main`.
+
+## Debug Protocol
+
+When a pipeline gate fails:
+
+1. **Read** the full error output — do not skim.
+2. **Identify** the root cause (compile error, test assertion failure, lint rule).
+3. **Locate** the minimal code change needed to fix it.
+4. **Fix** only what is necessary — do not refactor surrounding code.
+5. **Re-run** from Gate 1 through the previously failing gate and all subsequent gates.
+6. **Repeat** until all four gates pass.
+
+### Self-Correction Rules
+
+- **NEVER** comment out or delete a failing test — fix the implementation instead.
+- **NEVER** add `//nolint` directives to silence lint errors — fix the code instead.
+- **NEVER** use `_ = err` to discard errors you introduced.
+- If a gate still fails after three focused fix attempts, stop and report the full error output with a clear explanation of what was tried.
+
 ## Project Types
 
 This template supports two project types. Determine which one applies based on the current project structure.
